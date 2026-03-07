@@ -140,10 +140,44 @@ textarea{width:100%;min-height:65px;resize:vertical;margin-bottom:8px;display:bl
 .cb.tbl tr:nth-child(5) td{background:#fffde7;}
 .cb.tbl tr:nth-child(6) td{background:#fff3e0;}
 .cb.tbl tr:nth-child(7) td{background:#fce4d6;}
+
+@media print {
+  #pwScreen,#loadScreen,#hdr,#sb,#tb,#pq,.ov,.toast{display:none!important;}
+  #lay{display:block!important;height:auto!important;}
+  #main{display:block!important;height:auto!important;overflow:visible!important;}
+  #cv{display:block!important;height:auto!important;overflow:visible!important;}
+  #pc{display:block!important;overflow:visible!important;padding:0!important;}
+  #ph{display:none!important;}
+  body{background:#fff!important;color:#000!important;font-size:11pt;}
+  .chdr{border-bottom:2px solid #1a3a5c;margin-bottom:16px;padding-bottom:10px;}
+  .chdr h2{font-size:18pt;color:#1a3a5c;}
+  .cbody{font-size:10pt;line-height:1.8;}
+  .cb.bl{background:#f8f8f8!important;border:1px solid #ccc;padding:8px 12px;margin:4px 0;}
+  .cb.sn{background:#f0f8ff!important;border:1px solid #aac;padding:8px 12px;}
+  .cb.mh{color:#1a3a5c!important;font-size:12pt;font-weight:bold;border-left:3px solid #1a3a5c;padding-left:8px;}
+  .cb.sh{color:#2e6da4!important;font-size:11pt;font-weight:bold;padding-left:8px;border-left:2px solid #2e6da4;}
+  .cb.qt{background:#fffbf0!important;border-left:4px solid #c8960a;padding:8px 12px;font-style:italic;}
+  .cb.tbl table{width:100%;border-collapse:collapse;font-size:9pt;}
+  .cb.tbl th{background:#1a3a5c!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:6px 8px;}
+  .cb.tbl td{padding:5px 8px;border:1px solid #ccc;}
+  .cb.tbl tr:nth-child(1) td{background:#e8f5e9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cb.tbl tr:nth-child(2) td{background:#e8f5e9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cb.tbl tr:nth-child(3) td{background:#e8f5e9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cb.tbl tr:nth-child(4) td{background:#fffde7!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cb.tbl tr:nth-child(5) td{background:#FCE4D6!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cb.tbl tr:nth-child(6) td{background:#FCE4D6!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cb.tbl tr:nth-child(7) td{background:#FFCCCC!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cb.div{border-top:1px solid #ccc;margin:10px 0;}
+  .cb.xr{background:#eef4fb!important;border:1px solid #c0d8f0;padding:8px 12px;}
+  @page{margin:2cm;size:A4;}
+  h1.print-title{display:block!important;font-size:24pt;color:#1a3a5c;text-align:center;margin-bottom:6px;}
+  p.print-sub{display:block!important;text-align:center;color:#888;font-size:10pt;margin-bottom:20px;}
+}
+.print-title,.print-sub{display:none;}
 </style>
 </head>
 <body>
-<div id="pwScreen">
+<h1 class="print-title">My mCRPC Master File — Craig Kaufman</h1><p class="print-sub">Confidential · Updated March 2026</p><div id="pwScreen">
   <div id="pwBox">
     <div style="font-size:2.5rem;margin-bottom:12px">📚</div>
     <h2>mCRPC Master File</h2>
@@ -170,7 +204,8 @@ textarea{width:100%;min-height:65px;resize:vertical;margin-bottom:8px;display:bl
     <div class="sr-box" id="srb"></div>
   </div>
   <div class="sync-wrap"><div class="sdot" id="sdot"></div><span id="smsg">Loading...</span></div>
-  <button class="xbtn" onclick="exportAll()">⬇ Export</button>
+  <button class="xbtn" onclick="exportAll()">⬇ Questions</button>
+  <button class="xbtn" onclick="printChapter()" style="background:rgba(240,200,80,0.25);border-color:rgba(240,200,80,0.6);">🖨 Print PDF</button>
 </div>
 <div id="lay">
   <nav id="sb"><div class="sb-lbl">Chapters</div><div id="chl"></div></nav>
@@ -454,6 +489,11 @@ document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.ov.open').forEach(m=>m.classList.remove('open'));});
 function toast(msg){const t=document.getElementById('tst');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function printChapter(){
+  if(aid===null){alert('Please select a chapter first, then click Print PDF.');return;}
+  window.print();
+}
 initApp();
 </script>
 </body>
