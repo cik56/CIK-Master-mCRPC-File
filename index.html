@@ -191,10 +191,39 @@ textarea{width:100%;min-height:65px;resize:vertical;margin-bottom:8px;display:bl
 }
 .print-title,.print-sub{display:none;}
 
+/* ── Floating TOC ── */
+#tocBtn{position:fixed;top:72px;right:18px;z-index:300;width:38px;height:38px;border-radius:50%;background:#1a3a5c;border:2px solid rgba(240,230,200,0.4);color:#f0e6c0;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,0.3);transition:background 0.15s;}
+#tocBtn:hover{background:#254f78;}
+#tocBtn .toc-icon{font-size:1.1rem;line-height:1;}
+#tocPanel{position:fixed;top:72px;right:64px;z-index:299;width:320px;max-height:calc(100vh - 90px);background:#fff;border:1px solid #d0ccc4;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.18);display:none;flex-direction:column;overflow:hidden;}
+#tocPanel.open{display:flex;}
+#tocPanelHdr{background:#1a3a5c;padding:11px 14px;color:#f0e6c0;font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;flex-shrink:0;border-radius:9px 9px 0 0;display:flex;align-items:center;justify-content:space-between;}
+#tocPanelHdr span{font-size:0.72rem;color:rgba(240,230,200,0.6);font-family:'Inter',sans-serif;font-weight:400;}
+#tocBody{overflow-y:auto;flex:1;padding:6px 0;}
+.toc-ch{display:block;padding:7px 14px 3px;font-size:0.82rem;font-weight:700;color:#1a3a5c;cursor:pointer;border-left:3px solid transparent;transition:background 0.1s;}
+.toc-ch:hover{background:#f0f6ff;border-left-color:#2e6da4;}
+.toc-ch.toc-active{background:#eef4fb;border-left-color:#f0c040;color:#1a3a5c;}
+.toc-subs{padding-left:0;}
+.toc-sh{display:block;padding:3px 14px 3px 22px;font-size:0.76rem;color:#2e6da4;cursor:pointer;line-height:1.4;transition:background 0.1s;}
+.toc-sh:hover{background:#f0f6ff;}
+.toc-sub{display:block;padding:2px 14px 2px 34px;font-size:0.72rem;color:#888;cursor:pointer;line-height:1.4;transition:background 0.1s;}
+.toc-sub:hover{background:#f8f6f2;color:#1a3a5c;}
+.toc-divider{border:none;border-top:1px solid #ece8e2;margin:4px 0;}
+@media print{#tocBtn,#tocPanel{display:none!important;}}
+
 </style>
 </head>
 <body>
-<h1 class="print-title">My mCRPC Master File — Craig Kaufman</h1><p class="print-sub">Confidential · Updated March 2026</p><div id="pwScreen">
+<h1 class="print-title">My mCRPC Master File — Craig Kaufman</h1><p class="print-sub">Confidential · Updated March 2026</p>
+
+<!-- Floating TOC -->
+<button id="tocBtn" onclick="toggleTOC()" title="Table of Contents (T)"><span class="toc-icon">≡</span></button>
+<div id="tocPanel">
+  <div id="tocPanelHdr">📋 Table of Contents <span>T to toggle</span></div>
+  <div id="tocBody"></div>
+</div>
+
+<div id="pwScreen">
   <div id="pwBox">
     <div style="font-size:2.5rem;margin-bottom:12px">📚</div>
     <h2>mCRPC Master File</h2>
@@ -511,6 +540,55 @@ function printChapter(){
   if(aid===null){alert('Please select a chapter first, then click Print PDF.');return;}
   window.print();
 }
+
+/* ── TOC Functions ── */
+let tocOpen=false;
+function toggleTOC(){tocOpen=!tocOpen;document.getElementById('tocPanel').classList.toggle('open',tocOpen);if(tocOpen)buildTOC();}
+document.addEventListener('keydown',function(e){if(e.key==='t'||e.key==='T'){const tag=document.activeElement.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;toggleTOC();}});
+document.addEventListener('click',function(e){if(tocOpen&&!e.target.closest('#tocPanel')&&!e.target.closest('#tocBtn')){tocOpen=false;document.getElementById('tocPanel').classList.remove('open');}});
+function buildTOC(){
+  const body=document.getElementById('tocBody');
+  body.innerHTML=DEFS.map(ch=>{
+    const cont=CONTENT[String(ch.id)]||[];
+    const sections=[];const subs=[];
+    cont.forEach(p=>{
+      const t=p.trim();
+      if(/^\d+\.\d+\s/.test(t)){
+        const label=t.split('\n')[0].slice(0,60);
+        sections.push({label,raw:t});
+      }
+    });
+    const isActive=aid===ch.id;
+    let html=`<div class="toc-ch${isActive?' toc-active':''}" onclick="tocGo(${ch.id})">${ch.title}${ch.subtitle?'<br><span style="font-weight:400;color:#888;font-size:0.72rem;">'+ch.subtitle+'</span>':''}</div>`;
+    if(sections.length){
+      html+='<div class="toc-subs">'+sections.map(s=>`<span class="toc-sh" onclick="tocGoSec(${ch.id},'${s.label.replace(/'/g,"\\'")}')">${s.label}</span>`).join('')+'</div>';
+    }
+    html+='<hr class="toc-divider">';
+    return html;
+  }).join('');
+}
+function tocGo(id){selCh(id);tocOpen=false;document.getElementById('tocPanel').classList.remove('open');}
+function tocGoSec(id,label){
+  selCh(id);
+  setTimeout(()=>{
+    showTab('c');
+    setTimeout(()=>{
+      const body=document.getElementById('cbb');if(!body)return;
+      const els=body.querySelectorAll('.cb.sh');
+      for(const el of els){
+        if(el.textContent.trim().startsWith(label.slice(0,20))){
+          el.scrollIntoView({behavior:'smooth',block:'start'});
+          el.style.transition='background 0.3s';
+          el.style.background='#fff9e6';
+          setTimeout(()=>el.style.background='',1500);
+          break;
+        }
+      }
+    },100);
+  },80);
+  tocOpen=false;document.getElementById('tocPanel').classList.remove('open');
+}
+
 initApp();
 </script>
 </body>
