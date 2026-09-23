@@ -215,6 +215,29 @@ textarea{width:100%;min-height:65px;resize:vertical;margin-bottom:8px;display:bl
 }
 #mob-menu-btn{display:none;align-items:center;justify-content:center;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;font-size:1.4rem;width:40px;height:40px;border-radius:8px;cursor:pointer;flex-shrink:0;}
 #mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:7999;}
+
+#printAll{display:none;}
+@media print{
+  body.printing-all #lay,body.printing-all #hdr,body.printing-all #pwScreen,body.printing-all #loadScreen{display:none!important;}
+  body.printing-all #printAll{display:block!important;}
+  #printAll .pa-cover{text-align:center;padding-top:5cm;page-break-after:always;}
+  #printAll .pa-cover h1{font-size:28pt;color:#1a3a5c;margin-bottom:12px;}
+  #printAll .pa-sub{font-size:13pt;color:#444;}
+  #printAll .pa-date{font-size:11pt;color:#777;margin-top:8px;}
+  #printAll .pa-toc{page-break-after:always;}
+  #printAll .pa-toc h2{font-size:18pt;color:#1a3a5c;border-bottom:2px solid #1a3a5c;padding-bottom:6px;margin-bottom:12px;}
+  #printAll .pa-toc li{font-size:11pt;margin:4px 0;}
+  #printAll .pa-toc li span{color:#666;}
+  #printAll .pa-ch{page-break-before:always;}
+  #printAll .pa-q{margin-top:14px;border-top:2px solid #1a3a5c;padding-top:8px;}
+  #printAll .pa-q h3{font-size:13pt;color:#1a3a5c;margin-bottom:8px;page-break-after:avoid;}
+  #printAll .pa-qi{page-break-inside:avoid;border:1px solid #ccc;border-left:4px solid #2e6da4;padding:6px 10px;margin:5px 0;}
+  #printAll .pa-qh{font-size:9pt;font-weight:700;color:#2e6da4;}
+  #printAll .pa-qt{font-size:11pt;margin-top:2px;}
+  #printAll .pa-qn{font-size:10pt;color:#555;font-style:italic;margin-top:3px;}
+  #printAll .pa-qnone{font-size:10pt;color:#777;font-style:italic;}
+  #printAll .xrl{color:inherit;text-decoration:none;}
+}
 </style>
 </head>
 <body>
@@ -247,7 +270,8 @@ textarea{width:100%;min-height:65px;resize:vertical;margin-bottom:8px;display:bl
   </div>
   <div class="sync-wrap"><div class="sdot" id="sdot"></div><span id="smsg">Loading...</span></div>
   <button class="xbtn" onclick="exportAll()">⬇ Questions</button>
-  <button class="xbtn" onclick="printChapter()" style="background:rgba(240,200,80,0.25);border-color:rgba(240,200,80,0.6);">🖨 Print PDF</button>
+  <button class="xbtn" onclick="printChapter()" style="background:rgba(240,200,80,0.25);border-color:rgba(240,200,80,0.6);">🖨 Print Chapter</button>
+  <button class="xbtn" onclick="printAll()" style="background:rgba(240,200,80,0.25);border-color:rgba(240,200,80,0.6);">🖨 Print All Chapters</button>
 </div>
 <div id="lay">
   <nav id="sb"><div class="sb-lbl">Chapters</div><div id="chl"></div></nav>
@@ -408,8 +432,11 @@ function selCh(id){
   renderQ();
 }
 function renderC(id){
+  document.getElementById('cbb').innerHTML=blocksHTML(id);
+}
+function blocksHTML(id){
   const ps=CONTENT[String(id)]||[];
-  document.getElementById('cbb').innerHTML=ps.map(p=>{
+  return ps.map(p=>{
     const t=p.trim();
     if(!t||t==='---')return '<div class="cb div"></div>';
     if(t.startsWith('📊TABLE|')){
@@ -535,6 +562,27 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 function printChapter(){
   if(aid===null){alert('Please select a chapter first, then click Print PDF.');return;}
   window.print();
+}
+function qHTML(id){
+  const qs=getQ(id);
+  let h='<div class="pa-q"><h3>❓ Questions ('+qs.length+')</h3>';
+  if(!qs.length)return h+'<div class="pa-qnone">No questions for this chapter.</div></div>';
+  h+=qs.map((q,i)=>'<div class="pa-qi"><div class="pa-qh">Q'+(i+1)+' · '+esc(TL[q.type]||q.type||'')+(q.date?' · '+esc(q.date):'')+'</div><div class="pa-qt">'+esc(q.text).replace(/\n/g,'<br>')+'</div>'+(q.notes?'<div class="pa-qn">Notes: '+esc(q.notes).replace(/\n/g,'<br>')+'</div>':'')+'</div>').join('');
+  return h+'</div>';
+}
+function printAll(){
+  const old=document.getElementById('printAll');if(old)old.remove();
+  const d=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  let h='<div class="pa-cover"><h1>My mCRPC Master File</h1><div class="pa-sub">Craig Kaufman · Confidential</div><div class="pa-date">Printed '+d+'</div></div>';
+  h+='<div class="pa-toc"><h2>Contents</h2><ol>'+DEFS.map(ch=>'<li>'+esc(ch.title)+(ch.subtitle?' — <span>'+esc(ch.subtitle)+'</span>':'')+'</li>').join('')+'</ol></div>';
+  DEFS.forEach(ch=>{
+    h+='<section class="pa-ch"><div class="chdr"><h2>'+esc(ch.title)+(ch.subtitle?': '+esc(ch.subtitle):'')+'</h2></div><div class="cbody">'+blocksHTML(ch.id)+'</div>'+qHTML(ch.id)+'</section>';
+  });
+  const w=document.createElement('div');w.id='printAll';w.innerHTML=h;document.body.appendChild(w);
+  document.body.classList.add('printing-all');
+  const done=()=>{document.body.classList.remove('printing-all');const e=document.getElementById('printAll');if(e)e.remove();window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  setTimeout(()=>window.print(),50);
 }
 initApp();
 
