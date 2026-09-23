@@ -227,7 +227,7 @@ textarea{width:100%;min-height:65px;resize:vertical;margin-bottom:8px;display:bl
   #printAll .pa-toc{page-break-after:always;}
   #printAll .pa-toc h2{font-size:18pt;color:#1a3a5c;border-bottom:2px solid #1a3a5c;padding-bottom:6px;margin-bottom:12px;}
   #printAll .pa-toc li{font-size:11pt;margin:4px 0;}
-  #printAll .pa-toc li span{color:#666;}
+  
   #printAll .pa-ch{page-break-before:always;}
   #printAll .pa-q{margin-top:14px;border-top:2px solid #1a3a5c;padding-top:8px;}
   #printAll .pa-q h3{font-size:13pt;color:#1a3a5c;margin-bottom:8px;page-break-after:avoid;}
@@ -239,7 +239,11 @@ textarea{width:100%;min-height:65px;resize:vertical;margin-bottom:8px;display:bl
   body.pp-portrait .cb.tbl table{font-size:8.5pt!important;table-layout:auto;}
   body.pp-portrait .cb.tbl th{white-space:normal!important;font-size:8pt!important;padding:5px 6px!important;}
   body.pp-portrait .cb.tbl td{padding:5px 6px!important;word-break:break-word;}
-  #printAll .pa-toc a{color:#1a3a5c;text-decoration:none;}
+  #printAll .pa-toc ol{list-style:none;}
+  #printAll .pa-toc a{color:#1a3a5c;text-decoration:none;display:flex;align-items:baseline;gap:6px;}
+  #printAll .pa-toc .pa-ts{color:#666;}
+  #printAll .pa-toc .pa-dots{flex:1;border-bottom:1px dotted #999;transform:translateY(-3px);}
+  #printAll .pa-toc .pa-pn{min-width:2.5em;text-align:right;font-weight:700;}
   #printAll .xrl{color:inherit;text-decoration:none;}
 }
 </style>
@@ -588,14 +592,47 @@ function qHTML(id){
   h+=qs.map((q,i)=>'<div class="pa-qi"><div class="pa-qh">Q'+(i+1)+' · '+esc(TL[q.type]||q.type||'')+(q.date?' · '+esc(q.date):'')+'</div><div class="pa-qt">'+esc(q.text).replace(/\n/g,'<br>')+'</div>'+(q.notes?'<div class="pa-qn">Notes: '+esc(q.notes).replace(/\n/g,'<br>')+'</div>':'')+'</div>').join('');
   return h+'</div>';
 }
-function printAll(){
+function chHTML(ch){
+  return '<div class="chdr"><h2>'+esc(ch.title)+(ch.subtitle?': '+esc(ch.subtitle):'')+'</h2></div><div class="cbody">'+blocksHTML(ch.id)+'</div>'+qHTML(ch.id);
+}
+/* Measures how many printed pages each chapter will take, using the same
+   print styles and the browser's own column-fragmentation engine. */
+async function measureChapterPages(){
+  const portrait=document.body.classList.contains('pp-portrait');
+  const PX=96/2.54, mTop=1.2*PX, mSide=1.2*PX, mBot=1.6*PX;
+  const pw=portrait?816:1056, ph=portrait?1056:816;
+  const W=pw-2*mSide, H=ph-mTop-mBot;
+  let css='';document.querySelectorAll('style').forEach(st=>{css+=st.textContent+'\n';});
+  css=css.replace(/@media\s+print/g,'@media all');
+  css+='\n.pa-mc{width:'+W+'px;height:'+H+'px;column-width:'+W+'px;column-gap:0;column-fill:auto;overflow:visible;margin-bottom:'+(H+50)+'px;}\n.pa-end{height:0;}';
+  const fr=document.createElement('iframe');
+  fr.style.cssText='position:fixed;left:-20000px;top:0;width:'+(W+200)+'px;height:'+(H+200)+'px;visibility:hidden;border:0;';
+  document.body.appendChild(fr);
+  const fonts=[...document.querySelectorAll('link[rel="stylesheet"]')].map(l=>l.outerHTML).join('');
+  const body=DEFS.map(ch=>'<div class="pa-mc" data-id="'+ch.id+'">'+chHTML(ch)+'<div class="pa-end"></div></div>').join('');
+  const doc=fr.contentDocument;
+  doc.open();doc.write('<!DOCTYPE html><html><head><meta charset="utf-8">'+fonts+'<style>'+css+'</style></head><body class="printing-all'+(portrait?' pp-portrait':'')+'"><div id="printAll">'+body+'</div></body></html>');doc.close();
+  try{await Promise.race([doc.fonts.ready,new Promise(r=>setTimeout(r,3000))]);}catch(e){}
+  await new Promise(r=>setTimeout(r,100));
+  const res={};
+  doc.querySelectorAll('.pa-mc').forEach(mc=>{
+    const L=mc.getBoundingClientRect().left, e=mc.querySelector('.pa-end').getBoundingClientRect();
+    res[mc.dataset.id]=Math.floor((e.left-L+1)/W)+1;
+  });
+  fr.remove();
+  return res;
+}
+async function printAll(){
   const old=document.getElementById('printAll');if(old)old.remove();
+  toast('Preparing PDF — calculating page numbers…');
+  let counts={};
+  try{counts=await measureChapterPages();}catch(e){counts={};}
+  let pg=3; const start={};
+  DEFS.forEach(ch=>{start[ch.id]=counts[ch.id]?pg:null;pg+=counts[ch.id]||0;});
   const d=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   let h='<div class="pa-cover"><h1>My mCRPC Master File</h1><div class="pa-sub">Craig Kaufman · Confidential</div><div class="pa-date">Printed '+d+'</div></div>';
-  h+='<div class="pa-toc"><h2>Contents</h2><ol>'+DEFS.map(ch=>'<li><a href="#pa-ch-'+ch.id+'">'+esc(ch.title)+(ch.subtitle?' — <span>'+esc(ch.subtitle)+'</span>':'')+'</a></li>').join('')+'</ol></div>';
-  DEFS.forEach(ch=>{
-    h+='<section class="pa-ch" id="pa-ch-'+ch.id+'"><div class="chdr"><h2>'+esc(ch.title)+(ch.subtitle?': '+esc(ch.subtitle):'')+'</h2></div><div class="cbody">'+blocksHTML(ch.id)+'</div>'+qHTML(ch.id)+'</section>';
-  });
+  h+='<div class="pa-toc"><h2>Contents</h2><ol>'+DEFS.map(ch=>'<li><a href="#pa-ch-'+ch.id+'"><span class="pa-tt">'+esc(ch.title)+(ch.subtitle?' — <span class="pa-ts">'+esc(ch.subtitle)+'</span>':'')+'</span><span class="pa-dots"></span><span class="pa-pn">'+(start[ch.id]||'')+'</span></a></li>').join('')+'</ol></div>';
+  DEFS.forEach(ch=>{h+='<section class="pa-ch" id="pa-ch-'+ch.id+'">'+chHTML(ch)+'</section>';});
   const w=document.createElement('div');w.id='printAll';w.innerHTML=h;document.body.appendChild(w);
   document.body.classList.add('printing-all');
   const done=()=>{document.body.classList.remove('printing-all');const e=document.getElementById('printAll');if(e)e.remove();window.removeEventListener('afterprint',done);};
