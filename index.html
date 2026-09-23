@@ -236,6 +236,9 @@ textarea{width:100%;min-height:65px;resize:vertical;margin-bottom:8px;display:bl
   #printAll .pa-qt{font-size:11pt;margin-top:2px;}
   #printAll .pa-qn{font-size:10pt;color:#555;font-style:italic;margin-top:3px;}
   #printAll .pa-qnone{font-size:10pt;color:#777;font-style:italic;}
+  body.pp-portrait .cb.tbl table{font-size:8.5pt!important;table-layout:auto;}
+  body.pp-portrait .cb.tbl th{white-space:normal!important;font-size:8pt!important;padding:5px 6px!important;}
+  body.pp-portrait .cb.tbl td{padding:5px 6px!important;word-break:break-word;}
   #printAll .xrl{color:inherit;text-decoration:none;}
 }
 </style>
@@ -270,6 +273,10 @@ textarea{width:100%;min-height:65px;resize:vertical;margin-bottom:8px;display:bl
   </div>
   <div class="sync-wrap"><div class="sdot" id="sdot"></div><span id="smsg">Loading...</span></div>
   <button class="xbtn" onclick="exportAll()">⬇ Questions</button>
+  <select id="porient" onchange="setOrient(this.value)" title="PDF page layout" style="background:rgba(240,200,80,0.25);border:1px solid rgba(240,200,80,0.6);color:#f0e6c0;border-radius:6px;padding:6px 8px;font-size:0.8rem;cursor:pointer;">
+    <option value="landscape" style="color:#000;">📄 Landscape</option>
+    <option value="portrait" style="color:#000;">📄 Portrait</option>
+  </select>
   <button class="xbtn" onclick="printChapter()" style="background:rgba(240,200,80,0.25);border-color:rgba(240,200,80,0.6);">🖨 Print Chapter</button>
   <button class="xbtn" onclick="printAll()" style="background:rgba(240,200,80,0.25);border-color:rgba(240,200,80,0.6);">🖨 Print All Chapters</button>
 </div>
@@ -559,6 +566,16 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelect
 function toast(msg){const t=document.getElementById('tst');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
+function setOrient(v){
+  if(v!=='portrait')v='landscape';
+  let st=document.getElementById('pageStyle');
+  if(!st){st=document.createElement('style');st.id='pageStyle';document.head.appendChild(st);}
+  st.textContent='@media print{@page{margin:1.2cm;size:letter '+v+';}}';
+  document.body.classList.toggle('pp-portrait',v==='portrait');
+  const sel=document.getElementById('porient');if(sel)sel.value=v;
+  try{localStorage.setItem('mcrpc-orient',v);}catch(e){}
+}
+(function(){let v='landscape';try{v=localStorage.getItem('mcrpc-orient')||'landscape';}catch(e){}setOrient(v);})();
 function printChapter(){
   if(aid===null){alert('Please select a chapter first, then click Print PDF.');return;}
   window.print();
